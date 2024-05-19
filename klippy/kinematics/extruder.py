@@ -283,7 +283,8 @@ class ExtruderStepper:
             raise self.printer.command_error(
                 "'%s' is not a valid extruder." % (extruder_name,)
             )
-        extruder.link_extruder_stepper(self)
+        self.stepper.set_position(extruder.last_position)
+        self.stepper.set_trapq(extruder.get_trapq())
         self.motion_queue = extruder_name
         self.extruder = extruder
 
