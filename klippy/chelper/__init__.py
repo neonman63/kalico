@@ -54,7 +54,6 @@ OTHER_FILES = [
     "pollreactor.h",
     "msgblock.h",
     "kin_shaper.h",
-    "integrate.h",
 ]
 
 defs_stepcompress = """
@@ -183,6 +182,9 @@ defs_kin_extruder = """
         , double pa_velocity, struct pressure_advance_params *pa_params);
     void extruder_set_pressure_advance_model_func(struct stepper_kinematics *sk
         , double (*func)(double, double, struct pressure_advance_params *));
+    int extruder_set_shaper_params(struct stepper_kinematics *sk, char axis
+        , int n, double a[], double t[]);
+    double extruder_get_step_gen_window(struct stepper_kinematics *sk);
 """
 
 defs_kin_shaper = """

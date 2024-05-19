@@ -154,6 +154,9 @@ class CustomInputShaperParams:
             )
         return len(A), A, T
 
+    def get_axis(self):
+        return self.axis
+
     def get_shaper(self):
         return self.n, self.A, self.T
 
@@ -165,34 +168,6 @@ class CustomInputShaperParams:
                 ("shaper_t", ",".join(["%.6f" % (t,) for t in self.T])),
             ]
         )
-
-
-class AxisInputShaper:
-    def __init__(self, params):
-        self.params = params
-        self.n, self.A, self.T = params.get_shaper()
-        self.t_offs = shaper_defs.get_shaper_offset(self.A, self.T)
-        self.saved = None
-
-    def get_name(self):
-        return "shaper_" + self.get_axis()
-
-    def get_type(self):
-        return self.params.get_type()
-
-    def get_axis(self):
-        return self.params.get_axis()
-
-    def is_extruder_smoothing(self, exact_mode):
-        return not exact_mode and self.A
-
-    def is_enabled(self):
-        return self.n > 0
-
-    def update(self, shaper_type, gcmd):
-        self.params.update(shaper_type, gcmd)
-        self.n, self.A, self.T = self.params.get_shaper()
-        self.t_offs = shaper_defs.get_shaper_offset(self.A, self.T)
 
     def update_stepper_kinematics(self, sk):
         ffi_main, ffi_lib = chelper.get_ffi()
@@ -210,47 +185,19 @@ class AxisInputShaper:
             )
         return success
 
-    def update_extruder_kinematics(self, sk, exact_mode):
+    def update_extruder_kinematics(self, sk):
         ffi_main, ffi_lib = chelper.get_ffi()
-        axis = self.get_axis().encode()
-        if not self.is_extruder_smoothing(exact_mode):
-            # Make sure to disable any active input smoothing
-            coeffs, smooth_time = [], 0.0
-            success = (
-                ffi_lib.extruder_set_smoothing_params(
-                    sk, axis, len(coeffs), coeffs, smooth_time, 0.0
-                )
-                == 0
+        success = (
+            ffi_lib.extruder_set_shaper_params(
+                sk, self.axis.encode(), self.n, self.A, self.T
             )
-            success = (
-                ffi_lib.extruder_set_shaper_params(
-                    sk, axis, self.n, self.A, self.T
-                )
-                == 0
-            )
-        else:
-            shaper_type = self.get_type()
-            status = self.params.get_status()
-            damping_ratio = float(
-                status.get("damping_ratio", shaper_defs.DEFAULT_DAMPING_RATIO)
-            )
-
-            C_e, t_sm = extruder_smoother.get_extruder_smoother(
-                shaper_type,
-                self.T[-1] - self.T[0],
-                damping_ratio,
-                normalize_coeffs=False,
-            )
-            smoother_offset = self.t_offs - 0.5 * t_sm
-            success = (
-                ffi_lib.extruder_set_smoothing_params(
-                    sk, axis, len(C_e), C_e, t_sm, smoother_offset
-                )
-                == 0
-            )
+            == 0
+        )
         if not success:
             self.disable_shaping()
-            ffi_lib.extruder_set_shaper_params(sk, axis, self.n, self.A, self.T)
+            ffi_lib.extruder_set_shaper_params(
+                sk, self.axis.encode(), self.n, self.A, self.T
+            )
         return success
 
     def disable_shaping(self):
@@ -540,9 +487,7 @@ class InputShaper:
         self.printer.register_event_handler("klippy:connect", self.connect)
         self.toolhead = None
         self.extruders = []
-        self.exact_mode = 0
         self.config_extruder_names = config.getlist("enabled_extruders", [])
-        self.shaper_factory = ShaperFactory()
         self.shapers = [
             self.shaper_factory.create_shaper("x", config),
             self.shaper_factory.create_shaper("y", config),
@@ -625,9 +570,7 @@ class InputShaper:
                 )
         for e in self.extruders:
             for es in e.get_extruder_steppers():
-                failed_shapers.extend(
-                    es.update_input_shaping(self.shapers, self.exact_mode)
-                )
+                failed_shapers.extend(es.update_input_shaping(self.shapers))
         if failed_shapers:
             error = error or self.printer.command_error
             raise error(
@@ -679,7 +622,6 @@ class InputShaper:
                         "was not disabled\n" % (axis_str,)
                     )
         extruders = gcmd.get("EXTRUDER", "")
-        self.exact_mode = gcmd.get_int("EXACT", self.exact_mode)
         for en in extruders.split(","):
             extruder_name = en.strip()
             if not extruder_name:
@@ -725,7 +667,7 @@ class InputShaper:
             if extruder in self.extruders:
                 to_re_enable = [s for s in self.shapers if s.disable_shaping()]
                 for es in extruder.get_extruder_steppers():
-                    es.update_input_shaping(self.shapers, self.exact_mode)
+                    es.update_input_shaping(self.shapers)
                 for shaper in to_re_enable:
                     shaper.enable_shaping()
                 self.extruders.remove(extruder)
