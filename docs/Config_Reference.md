@@ -4427,6 +4427,13 @@ run_current:
 #   velocity" threshold (THIGH) to. This is typically used to disable
 #   the "CoolStep" feature at high speeds. The default is to not set a
 #   TMC "high velocity" threshold.
+#current_range:
+#   The current_range setting for the driver, by default it will be
+#   autocalculated to match the requested run_current
+#driver_CS: 31
+#   The curren_scaler value, the default is 31 which is a good value for most
+#   setups.
+#   For further information consult the tmc2240 docs and tuning sheet.
 #driver_MSLUT0: 2863314260
 #driver_MSLUT1: 1251300522
 #driver_MSLUT2: 608774441
