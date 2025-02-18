@@ -302,6 +302,9 @@ position_max:
 #homing_speed: 5.0
 #   Maximum velocity (in mm/s) of the stepper when homing. The default
 #   is 5mm/s.
+#homing_accel:
+#   Maximum accel (in mm/s) of the stepper when homing. The default
+#   is to use the max accel configured in the [printer]'s object.
 #homing_retract_dist: 5.0
 #   Distance to backoff (in mm) before homing a second time during
 #   homing. If `use_sensorless_homing` is false, this setting can be set
@@ -4480,6 +4483,13 @@ run_current:
 #   velocity" threshold (THIGH) to. This is typically used to disable
 #   the "CoolStep" feature at high speeds. The default is to not set a
 #   TMC "high velocity" threshold.
+#current_range:
+#   The current_range bit value for the driver. Valid values are 0-3.
+#   The defaul is to auto-calculate to match the requested run_current.
+#   For further information consult the tmc2240 datasheet and tuning table.
+#driver_CS: 31
+#   The current_scaler value for the driver. The default is 31.
+#   For further information consult the tmc2240 datasheet and tuning table.
 #driver_MSLUT0: 2863314260
 #driver_MSLUT1: 1251300522
 #driver_MSLUT2: 608774441
